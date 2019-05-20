@@ -174,13 +174,10 @@ class MlpPolicy(object):
             # h1 = activ(bn(fc(X, 'pi_fc1', nh=512, init_scale=np.sqrt(2)), training=training))
             # h2 = activ(bn(fc(h1, 'pi_fc2', nh=512, init_scale=np.sqrt(2)), training=training))
             # h3 = activ(bn(fc(h2, 'pi_fc3', nh=256, init_scale=np.sqrt(2)), training=training))
-            h1 = activ(fc(X, 'pi_fc1', nh=512, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'pi_fc2', nh=512, init_scale=np.sqrt(2)))
-            h3 = activ(fc(h2, 'pi_fc3', nh=256, init_scale=np.sqrt(2)))
-            acs = fc(h3, 'actions', actdim, init_scale=0.01)
-            angle = tf.nn.sigmoid(acs[:, 0:1])*2  # angle between [-2, 2]
-            move = tf.multiply(tf.nn.sigmoid(acs[:, 1:2]), 20, name='movement')
-            pi = tf.concat([angle, move], axis=1, name='pi')
+            h1 = activ(fc(X, 'pi_fc1', nh=100, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'pi_fc2', nh=100, init_scale=np.sqrt(2)))
+            h3 = activ(fc(h2, 'pi_fc3', nh=100, init_scale=np.sqrt(2)))
+            pi = 2*tf.nn.tanh(fc(h3, 'action', actdim, init_scale=0.01))
 
             # h1 = activ(bn(fc(X, 'vf_fc1', nh=512, init_scale=np.sqrt(2)), training=training))
             # h2 = activ(bn(fc(h1, 'vf_fc2', nh=512, init_scale=np.sqrt(2)), training=training))
@@ -189,24 +186,16 @@ class MlpPolicy(object):
             h2 = activ(fc(h1, 'vf_fc2', nh=512, init_scale=np.sqrt(2)))
             h3 = activ(fc(h2, 'vf_fc3', nh=256, init_scale=np.sqrt(2)))
             vf = fc(h3, 'vf', 1)[:, 0]
-
             logstd = tf.get_variable(name="logstd", shape=[1, actdim],
                                      initializer=tf.zeros_initializer())
-        # tf.concat是连接两个矩阵的操作 1表示按行链连接，0列连接
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
-
-        # 参数化的概率分布族
-        # 根据action_space创建相应的参数化分布。如这里action_space是Discrete(4)，那分布
-        # 就是CategoricalPdType()。然后根据该分布类型，结合网络输出（pi），得到动作概率分
-        # 布CategoricalPd，最后在该分布上采样，得到动作a0。neglogp0即为该动作的自信息量。
-        '''以下是针对连续动作spcae.Box来说的'''
-        '''返回DiagGaussianPdType的类'''
         self.pdtype = make_pdtype(ac_space)  # Probability distribution function  pd
         '''返回DiagGaussianPd的类'''
         self.pd = self.pdtype.pdfromflat(pdparam)
         a0 = self.pd.sample()
         action = tf.add(a0, 0, name='action')  # use this tensor as action when inference
         # if I need action clipping?
+        a0 = tf.clip_by_value(a0, -2, 2)
         neglogp0 = self.pd.neglogp(a0)
 
         self.initial_state = None

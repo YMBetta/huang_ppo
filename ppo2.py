@@ -1,10 +1,8 @@
 import time
 # 双向队列
 from collections import deque
-import random
 import numpy as np
 import tensorflow as tf
-from baselines import logger
 from logger import MyLogger
 
 gpu_config = tf.ConfigProto()
@@ -23,10 +21,10 @@ class Model(object):
         # act_model = policy(sess, ob_space, ac_space, nbatch=1, nsteps=1, nlstm=256, reuse=False)
         # train_model = policy(sess, ob_space, ac_space, nbatch=4000, nsteps=200, nlstm=256, reuse=True)
         A = train_model.pdtype.sample_placeholder([None])  # action
-        ADV = tf.placeholder(tf.float32, [None])  # advantage
-        R = tf.placeholder(tf.float32, [None])  # return
-        OLDNEGLOGPAC = tf.placeholder(tf.float32, [None])  # old -logp(action)
-        OLDVPRED = tf.placeholder(tf.float32, [None])  # old value prediction
+        ADV = tf.placeholder(tf.float32, [None, 1])  # advantage
+        R = tf.placeholder(tf.float32, [None, 1])  # return
+        OLDNEGLOGPAC = tf.placeholder(tf.float32, [None, 1])  # old -logp(action)
+        OLDVPRED = tf.placeholder(tf.float32, [None, 1])  # old value prediction
         LR = tf.placeholder(tf.float32, [])  # learning rate
         CLIPRANGE = tf.placeholder(tf.float32, [])
         neglogpac = train_model.pd.neglogp(A)  # -logp(action)
@@ -53,13 +51,15 @@ class Model(object):
             params = tf.trainable_variables()  # 图中需要训练的变量
         # c's we use bn, add dependencies to notify tf updating mean and var during training
         # with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
-        grads = tf.gradients(pg_loss, params)
+        grads = tf.gradients(loss, params)
         if max_grad_norm is not None:
             grads, _grad_norm = tf.clip_by_global_norm(grads, max_grad_norm)
         grads = list(zip(grads, params))
         trainer = tf.train.AdamOptimizer(learning_rate=LR, epsilon=1e-5)
-        _train_a = trainer.apply_gradients(grads, global_step=self.global_step_policy)
-        _train_c = tf.train.AdamOptimizer(learning_rate=LR, epsilon=1e-5).minimize(vf_loss)
+        _train = trainer.apply_gradients(grads, global_step=self.global_step_policy)
+        # _train_a = trainer.apply_gradients(grads, global_step=self.global_step_policy)
+        # _train_c = tf.train.AdamOptimizer(learning_rate=LR, epsilon=1e-5).minimize(vf_loss)
+
         def train(lr, cliprange, obs, returns, masks, actions, values, neglogpacs, states=None):
             advs = returns - values
             advs = (advs - advs.mean()) / (advs.std() + 1e-8)
@@ -70,7 +70,7 @@ class Model(object):
                 td_map[train_model.S] = states
                 td_map[train_model.M] = masks
 
-            return sess.run([pg_loss, vf_loss, entropy, loss, approxkl, clipfrac, _train_a, _train_c], td_map)[:-2]
+            return sess.run([pg_loss, vf_loss, entropy, loss, approxkl, clipfrac, _train], td_map)[:-1]
 
         self.loss_names = ['policy_loss', 'value_loss', 'policy_entropy', 'approxkl', 'clipfrac']
         saver = tf.train.Saver(max_to_keep=10)
@@ -129,45 +129,46 @@ class Runner(object):
         # 只能采样一条轨迹
         while True:
             act, v, self.states, neglogp = self.model.step(obs.reshape(-1, self.obs_space.shape[0]), self.states)
-            mb_obs.append(obs)
+            mb_obs.append(obs.reshape(3))
             mb_actions.append(act)
             mb_values.append(v)
             mb_neglogpacs.append(neglogp)
             obs, r, d, _ = self.env.step(act)
             mb_dones.append(d)  # 有mb的对齐可以看出，d指示的是下一obs是否为结束
+            mb_rewards.append(r/8+1)
             if d:
 #                v = self.model.value(obs.reshape(-1, self.action_space.shape[0]), self.states)
 #                mb_values.append(v)
                 obs = self.env.reset()
             if len(mb_dones) >= self.nsteps:
                 break
-        
+
         mb_obs = np.asarray(mb_obs, dtype=np.float32).reshape(self.nsteps, self.obs_space.shape[0])
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
         mb_actions = np.asarray(mb_actions, np.float32).reshape(self.nsteps, self.action_space.shape[0])
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
         mb_dones = np.asarray(mb_dones, dtype=np.bool)
-        
+
+        # print(mb_obs.shape, mb_rewards.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
         last_values = 0.
         mb_returns = np.zeros_like(mb_rewards)
         mb_advs = np.zeros_like(mb_rewards)
         lastgaelam = 0.
         for t in reversed(range(self.nsteps)):
-            if mb_dones[t][0] or t == self.nsteps-1:
+            if mb_dones[t] or t == self.nsteps-1:
                 nextnonterminal = 0.  
                 nextvalues = 0.
             else:
                 nextnonterminal = 1.0
                 nextvalues = mb_values[t + 1]
 
-
             delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
 
         mb_returns = mb_advs + mb_values
-
-        return ((mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs),
+        print('sum_reward| ', np.sum(mb_rewards))
+        return (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs,
                 mb_states, epinfos)
        
 
@@ -265,8 +266,6 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
                                nbatch_train=nbatch_train,
                                nsteps=nsteps, ent_coef=ent_coef, vf_coef=vf_coef,
                                max_grad_norm=max_grad_norm)
-
-   
    
     model = make_model()  # make two model. act_model and train_model
     runner = Runner(sess=sess, env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam)
@@ -291,13 +290,6 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         mylogger.write_summary_scalar(policy_step//noptepochs//nminibatches, 'lrG', lrnow)
         assert nbatch % nminibatches == 0
 
-        # print('obs', obs.shape, obs[0][:10])
-        #         # print('return.shape', returns.shape, returns[0])
-        #         # print('masks_action',masks.shape, masks[0])
-        #         # print('actions', actions.shape, actions[0])
-        #         # print('values', values.shape[0], values[0])
-        #         # print('neglogpacs', neglogpacs.shape, neglogpacs[0])
-        # sampler.next_buffers(env_global_step=runner.env_global_step)
         inds = np.arange(nbatch)
         np.random.shuffle(inds)
         states = runner.states
