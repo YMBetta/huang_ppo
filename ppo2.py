@@ -133,7 +133,7 @@ class Runner(object):
             mb_actions.append(act)
             mb_values.append(v)
             mb_neglogpacs.append(neglogp)
-            obs, r, d, _ = env.step(act)
+            obs, r, d, _ = self.env.step(act)
             mb_dones.append(d)  # 有mb的对齐可以看出，d指示的是下一obs是否为结束
             if d:
 #                v = self.model.value(obs.reshape(-1, self.action_space.shape[0]), self.states)
@@ -319,7 +319,6 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         else:  # recurrent version
             for i in range(2):  # critic part of policy if 2
                 obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run()
-                obs = obs / sampler.norm_max
                 # obs = obs + (np.random.normal(0, 0.2, 16000 * 291) * (np.exp(-policy_step / 100))).reshape(obs.shape)
                 # print('states.shape', states.shape)
                 assert nenvs % nminibatches == 0
@@ -355,8 +354,8 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
                               policy_step % noptepochs == 0 or update == 1):
             mylogger.add_info_txt("saved ckpt model!")
             model.save(sess=sess, save_path=model.save_path, global_step=policy_step//(noptepochs*nminibatches))
-    np.savetxt('obs.txt', obs, fmt='%10.6f')
-    np.savetxt('action.txt', actions, fmt='%10.6f')
+    # np.savetxt('obs.txt', obs, fmt='%10.6f')
+    # np.savetxt('action.txt', actions, fmt='%10.6f')
     env.close()
 
 
