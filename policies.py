@@ -176,16 +176,14 @@ class MlpPolicy(object):
             # h3 = activ(bn(fc(h2, 'pi_fc3', nh=256, init_scale=np.sqrt(2)), training=training))
             h1 = activ(fc(X, 'pi_fc1', nh=100, init_scale=np.sqrt(2)))
             h2 = activ(fc(h1, 'pi_fc2', nh=100, init_scale=np.sqrt(2)))
-            h3 = activ(fc(h2, 'pi_fc3', nh=100, init_scale=np.sqrt(2)))
-            pi = 2*tf.nn.tanh(fc(h3, 'action', actdim, init_scale=0.01))
+            pi = 2*tf.nn.tanh(fc(h2, 'pi', actdim, init_scale=0.01))
 
             # h1 = activ(bn(fc(X, 'vf_fc1', nh=512, init_scale=np.sqrt(2)), training=training))
             # h2 = activ(bn(fc(h1, 'vf_fc2', nh=512, init_scale=np.sqrt(2)), training=training))
             # h3 = activ(bn(fc(h2, 'vf_fc3', nh=256, init_scale=np.sqrt(2)), training=training))
-            h1 = activ(fc(X, 'vf_fc1', nh=512, init_scale=np.sqrt(2)))
-            h2 = activ(fc(h1, 'vf_fc2', nh=512, init_scale=np.sqrt(2)))
-            h3 = activ(fc(h2, 'vf_fc3', nh=256, init_scale=np.sqrt(2)))
-            vf = fc(h3, 'vf', 1)[:, 0]
+            h1 = activ(fc(X, 'vf_fc1', nh=100, init_scale=np.sqrt(2)))
+            h2 = activ(fc(h1, 'vf_fc2', nh=100, init_scale=np.sqrt(2)))
+            vf = fc(h2, 'vf', 1)[:, 0]
             logstd = tf.get_variable(name="logstd", shape=[1, actdim],
                                      initializer=tf.zeros_initializer())
         pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
@@ -193,7 +191,7 @@ class MlpPolicy(object):
         '''返回DiagGaussianPd的类'''
         self.pd = self.pdtype.pdfromflat(pdparam)
         a0 = self.pd.sample()
-        action = tf.add(a0, 0, name='action')  # use this tensor as action when inference
+        action = tf.identity(a0, name='action')  # use this tensor as action when inference
         # if I need action clipping?
         a0 = tf.clip_by_value(a0, -2, 2)
         neglogp0 = self.pd.neglogp(a0)

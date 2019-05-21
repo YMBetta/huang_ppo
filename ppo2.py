@@ -21,10 +21,10 @@ class Model(object):
         # act_model = policy(sess, ob_space, ac_space, nbatch=1, nsteps=1, nlstm=256, reuse=False)
         # train_model = policy(sess, ob_space, ac_space, nbatch=4000, nsteps=200, nlstm=256, reuse=True)
         A = train_model.pdtype.sample_placeholder([None])  # action
-        ADV = tf.placeholder(tf.float32, [None, 1])  # advantage
-        R = tf.placeholder(tf.float32, [None, 1])  # return
-        OLDNEGLOGPAC = tf.placeholder(tf.float32, [None, 1])  # old -logp(action)
-        OLDVPRED = tf.placeholder(tf.float32, [None, 1])  # old value prediction
+        ADV = tf.placeholder(tf.float32, [None])  # advantage
+        R = tf.placeholder(tf.float32, [None])  # return
+        OLDNEGLOGPAC = tf.placeholder(tf.float32, [None])  # old -logp(action)
+        OLDVPRED = tf.placeholder(tf.float32, [None])  # old value prediction
         LR = tf.placeholder(tf.float32, [])  # learning rate
         CLIPRANGE = tf.placeholder(tf.float32, [])
         neglogpac = train_model.pd.neglogp(A)  # -logp(action)
@@ -63,8 +63,14 @@ class Model(object):
         def train(lr, cliprange, obs, returns, masks, actions, values, neglogpacs, states=None):
             advs = returns - values
             advs = (advs - advs.mean()) / (advs.std() + 1e-8)
-            td_map = {train_model.X: obs, A: actions, ADV: advs, R: returns, LR: lr,
-                      CLIPRANGE: cliprange, OLDNEGLOGPAC: neglogpacs, OLDVPRED: values}
+            td_map = {train_model.X: obs,
+                      A: actions,
+                      ADV: advs,
+                      R: returns,
+                      LR: lr,
+                      CLIPRANGE: cliprange,
+                      OLDNEGLOGPAC: neglogpacs,
+                      OLDVPRED: values}
 
             if states is not None:
                 td_map[train_model.S] = states
@@ -111,7 +117,8 @@ class Runner(object):
         self.action_space = env.action_space
         self.obs_space = env.observation_space
         self.model = model
-        
+
+        self.obs = env.obs
         self.gamma = gamma
         self.lam = lam
         self.nsteps = nsteps
@@ -122,43 +129,45 @@ class Runner(object):
     def run(self):
         # mb_agents: my note: a List of agent' ids
         mb_obs, mb_actions, mb_rewards, mb_values, mb_dones, mb_neglogpacs = [], [], [], [], [], []
-        mb_tras = []
         epinfos = []
         mb_states = []
-        obs = self.env.reset()
+        ep_r = 0
+        # self.obs = self.env.reset()
         # 只能采样一条轨迹
         while True:
-            act, v, self.states, neglogp = self.model.step(obs.reshape(-1, self.obs_space.shape[0]), self.states)
-            mb_obs.append(obs.reshape(3))
+            act, v, self.states, neglogp = self.model.step(self.obs.reshape(-1, self.obs_space.shape[0]), self.states)
+            mb_obs.append(self.obs.reshape(self.obs_space.shape[0]))
+            act = act.reshape(self.action_space.shape[0])
             mb_actions.append(act)
-            mb_values.append(v)
-            mb_neglogpacs.append(neglogp)
-            obs, r, d, _ = self.env.step(act)
+            mb_values.append(np.asscalar(v))
+            mb_neglogpacs.append(neglogp[0])
+            self.obs, r, d, _ = self.env.step(act)
+            ep_r += r
             mb_dones.append(d)  # 有mb的对齐可以看出，d指示的是下一obs是否为结束
-            mb_rewards.append(r/8+1)
+            mb_rewards.append(r)  #  reward normalize
             if d:
-#                v = self.model.value(obs.reshape(-1, self.action_space.shape[0]), self.states)
+#                v = self.model.value(obs.reshape(-1, self.obs_space.shape[0]), self.states)
 #                mb_values.append(v)
-                obs = self.env.reset()
+                last_values = self.model.value(self.obs.reshape(-1, self.obs_space.shape[0]), self.states)
+                self.obs = self.env.reset()
             if len(mb_dones) >= self.nsteps:
                 break
 
         mb_obs = np.asarray(mb_obs, dtype=np.float32).reshape(self.nsteps, self.obs_space.shape[0])
-        mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
+        mb_rewards = np.asarray(mb_rewards, dtype=np.float32).reshape(self.nsteps)
         mb_actions = np.asarray(mb_actions, np.float32).reshape(self.nsteps, self.action_space.shape[0])
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
-        mb_dones = np.asarray(mb_dones, dtype=np.bool)
+        mb_dones = np.asarray(mb_dones, dtype=np.bool).reshape(self.nsteps)
 
-        # print(mb_obs.shape, mb_rewards.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
-        last_values = 0.
+        print(mb_obs.shape, mb_rewards.shape, mb_actions.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
         mb_returns = np.zeros_like(mb_rewards)
         mb_advs = np.zeros_like(mb_rewards)
         lastgaelam = 0.
         for t in reversed(range(self.nsteps)):
-            if mb_dones[t] or t == self.nsteps-1:
-                nextnonterminal = 0.  
-                nextvalues = 0.
+            if t == self.nsteps-1:
+                nextnonterminal = 1.0
+                nextvalues = last_values
             else:
                 nextnonterminal = 1.0
                 nextvalues = mb_values[t + 1]
@@ -167,9 +176,9 @@ class Runner(object):
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
 
         mb_returns = mb_advs + mb_values
-        print('sum_reward| ', np.sum(mb_rewards))
+        print('sum_reward | ', ep_r)
         return (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs,
-                mb_states, epinfos)
+                mb_states, epinfos, ep_r)
        
 
 def sf01(arr):
@@ -287,7 +296,7 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
 
         mylogger.add_info_txt('=========================================')
         mylogger.add_info_txt('lr of policy model now: '+str(lrnow))
-        mylogger.write_summary_scalar(policy_step//noptepochs//nminibatches, 'lrG', lrnow)
+        mylogger.write_summary_scalar(update,  'lrG', lrnow)
         assert nbatch % nminibatches == 0
 
         inds = np.arange(nbatch)
@@ -297,7 +306,8 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         if states is None:  # nonrecurrent version
             for i in range(2):  # critic part of policy is 2
                 inds = np.arange(nbatch)
-                obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run()
+                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r = runner.run()
+                mylogger.write_summary_scalar(update, 'epr_sum', ep_r)
                 epinfobuf.extend(epinfos)
                 # obs = obs + (np.random.normal(0, 0.2, 16000*291) * (np.exp(-policy_step/100))).reshape(obs.shape)
                 for _ in range(noptepochs):  # noptepochs = 4
@@ -306,11 +316,11 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
                         end = start + nbatch_train
                         mbinds = inds[start:end]
                         slices = (arr[mbinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
-                        mblossvals.append(model.train(lrnow, cliprangenow, *slices))
+                        mblossvals.append(model.train(lrnow, cliprangenow, *slices))  # lr, cliprange, obs, returns, masks, actions, values, neglogpacs, states
 
         else:  # recurrent version
             for i in range(2):  # critic part of policy if 2
-                obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run()
+                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r = runner.run()
                 # obs = obs + (np.random.normal(0, 0.2, 16000 * 291) * (np.exp(-policy_step / 100))).reshape(obs.shape)
                 # print('states.shape', states.shape)
                 assert nenvs % nminibatches == 0
@@ -336,16 +346,15 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         policy_step = sess.run(model.global_step_policy)
       
         '''pg_loss, vf_loss, entropy'''
-        mylogger.write_summary_scalar(policy_step//(noptepochs*nminibatches), "pg_loss", lossvals[0])
-        mylogger.write_summary_scalar(policy_step//(noptepochs*nminibatches), "vf_loss", lossvals[1])
-        mylogger.write_summary_scalar(policy_step//(noptepochs*nminibatches), "entropy", lossvals[2])
-        mylogger.write_summary_scalar(policy_step // (noptepochs * nminibatches), "surrogate loss", lossvals[3])
+        mylogger.write_summary_scalar(update, "pg_loss", lossvals[0])
+        mylogger.write_summary_scalar(update, "vf_loss", lossvals[1])
+        mylogger.write_summary_scalar(update, "entropy", lossvals[2])
+        mylogger.write_summary_scalar(update, "surrogate loss", lossvals[3])
        
         mylogger.add_info_txt('save_interval'+str(save_interval)+'update'+str(update))
-        if save_interval and (policy_step//(noptepochs*nminibatches) % save_interval == 0 and
-                              policy_step % noptepochs == 0 or update == 1):
+        if save_interval and (update % save_interval == 0 or update == 1):
             mylogger.add_info_txt("saved ckpt model!")
-            model.save(sess=sess, save_path=model.save_path, global_step=policy_step//(noptepochs*nminibatches))
+            model.save(sess=sess, save_path=model.save_path, global_step=update)
     # np.savetxt('obs.txt', obs, fmt='%10.6f')
     # np.savetxt('action.txt', actions, fmt='%10.6f')
     env.close()
