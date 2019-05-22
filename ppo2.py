@@ -4,11 +4,13 @@ from collections import deque
 import numpy as np
 import tensorflow as tf
 from logger import MyLogger
-
+from discriminator import Discriminator
+from expert import Sampler
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.3 
 mylogger = MyLogger("./log")
 Dlam = 0.98
+gail_or_ppo = 'ppo'
 
 class Model(object):
     def __init__(self, *,sess,policy, ob_space, ac_space, nbatch_act, nbatch_train,
@@ -117,8 +119,10 @@ class Runner(object):
         self.action_space = env.action_space
         self.obs_space = env.observation_space
         self.model = model
+        if gail_or_ppo == 'gail':
+            self.discriminator = Discriminator(env)
 
-        self.obs = env.obs
+        # self.obs = env.obs
         self.gamma = gamma
         self.lam = lam
         self.nsteps = nsteps
@@ -132,8 +136,9 @@ class Runner(object):
         epinfos = []
         mb_states = []
         ep_r = 0
-        # self.obs = self.env.reset()
-        # 只能采样一条轨迹
+        self.obs = self.env.reset()
+        # 只能采样一条轨迹, 严格来说
+        epi_count = 0
         while True:
             act, v, self.states, neglogp = self.model.step(self.obs.reshape(-1, self.obs_space.shape[0]), self.states)
             mb_obs.append(self.obs.reshape(self.obs_space.shape[0]))
@@ -144,10 +149,16 @@ class Runner(object):
             self.obs, r, d, _ = self.env.step(act)
             ep_r += r
             mb_dones.append(d)  # 有mb的对齐可以看出，d指示的是下一obs是否为结束
-            mb_rewards.append(r)  #  reward normalize
+            if gail_or_ppo == 'ppo':
+                mb_rewards.append(r)  #  reward normalize
+            else:
+                r = self.discriminator.get_rewards(self.obs.reshape(1, self.obs_space.shape[0]),
+                                                   act.reshape(1, self.action_space.shape[0]))
+                mb_rewards.append(r)
             if d:
 #                v = self.model.value(obs.reshape(-1, self.obs_space.shape[0]), self.states)
 #                mb_values.append(v)
+                epi_count += 1
                 last_values = self.model.value(self.obs.reshape(-1, self.obs_space.shape[0]), self.states)
                 self.obs = self.env.reset()
             if len(mb_dones) >= self.nsteps:
@@ -160,7 +171,8 @@ class Runner(object):
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).reshape(self.nsteps)
 
-        print(mb_obs.shape, mb_rewards.shape, mb_actions.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
+        # print(mb_obs.shape, mb_rewards.shape, mb_actions.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
+        print('epi_count | ', epi_count)
         mb_returns = np.zeros_like(mb_rewards)
         mb_advs = np.zeros_like(mb_rewards)
         lastgaelam = 0.
@@ -171,14 +183,15 @@ class Runner(object):
             else:
                 nextnonterminal = 1.0
                 nextvalues = mb_values[t + 1]
-
+            if mb_dones[t]:
+                nextnonterminal = 0.
             delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
             mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
 
         mb_returns = mb_advs + mb_values
         print('sum_reward | ', ep_r)
         return (mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_neglogpacs,
-                mb_states, epinfos, ep_r)
+                mb_states, epinfos, ep_r, epi_count)
        
 
 def sf01(arr):
@@ -268,8 +281,11 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
     ac_space = env.action_space
     nbatch = nenvs * nsteps
     nbatch_train = nbatch // nminibatches  # 整除
-    mylogger.add_info_txt('nbatch, nbatch_train, nminibatches: '+str(nbatch)+','+str(nbatch_train)+','+str(nminibatches))
-    
+    mylogger.add_info_txt('nbatch, nbatch_train, nminibatches: ' + str(nbatch) + ',' + str(nbatch_train) + ',' + str(nminibatches))
+
+    if gail_or_ppo == 'gail':
+        sampler = Sampler(batch_size=nbatch)
+
     sess = tf.Session(config=gpu_config)
     make_model = lambda: Model(sess=sess,policy=policy, ob_space=ob_space, ac_space=ac_space, nbatch_act=nenvs,
                                nbatch_train=nbatch_train,
@@ -303,11 +319,28 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         np.random.shuffle(inds)
         states = runner.states
         mblossvals = []
+
+        if gail_or_ppo == 'ppo':
+            pass
+        else:
+            expert_s, expert_a = sampler.sample()
+            gen_s, returns, masks, gen_a, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
+            runner.discriminator.train(expert_s, expert_a, gen_s, gen_a)
+            expert_rewards = runner.discriminator.get_rewards_e(expert_s, expert_a)
+            gen_rewards = runner.discriminator.get_rewards(gen_s, gen_a)
+            mylogger.write_summary_scalar(update, 'expert_reward mean: ', np.mean(expert_rewards))
+            mylogger.write_summary_scalar(update, 'gen_rewards mean: ', np.mean(gen_rewards))
+
         if states is None:  # nonrecurrent version
             for i in range(2):  # critic part of policy is 2
                 inds = np.arange(nbatch)
-                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r = runner.run()
+                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
+                if update > nupdates - 2:
+                    np.savetxt('trajectory/obs.txt', obs, fmt='%10.6f')
+                    np.savetxt('trajectory/act.txt', actions, fmt='%10.6f')
+                    np.savetxt('trajectory/epr.txt', np.asarray([ep_r]))
                 mylogger.write_summary_scalar(update, 'epr_sum', ep_r)
+                mylogger.write_summary_scalar(update, 'nums of episodes', ep_count)
                 epinfobuf.extend(epinfos)
                 # obs = obs + (np.random.normal(0, 0.2, 16000*291) * (np.exp(-policy_step/100))).reshape(obs.shape)
                 for _ in range(noptepochs):  # noptepochs = 4
@@ -320,7 +353,7 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
 
         else:  # recurrent version
             for i in range(2):  # critic part of policy if 2
-                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r = runner.run()
+                obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
                 # obs = obs + (np.random.normal(0, 0.2, 16000 * 291) * (np.exp(-policy_step / 100))).reshape(obs.shape)
                 # print('states.shape', states.shape)
                 assert nenvs % nminibatches == 0

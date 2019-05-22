@@ -76,11 +76,11 @@ class UnityEnv():
 
 def main():
     num_timesteps = 1e6
-    # env = gym.make('Pendulum-v0')
-    env = UnityEnv()
+    env = gym.make('Pendulum-v0')
+    # env = UnityEnv()
     ppo2.learn(policy=policies.MlpPolicy,
                env=env,
-               nsteps=int(1e3),
+               nsteps=int(1000),
                total_timesteps=num_timesteps,
                ent_coef=1e-3,
                lr=1e-4,
