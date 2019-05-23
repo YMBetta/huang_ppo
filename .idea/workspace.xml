@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4866cdd4-0d01-4e94-a12f-3603bf897c72" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/discriminator.py" beforeDir="false" afterPath="$PROJECT_DIR$/discriminator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/expert.py" beforeDir="false" afterPath="$PROJECT_DIR$/expert.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/policies.py" beforeDir="false" afterPath="$PROJECT_DIR$/policies.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ppo2.py" beforeDir="false" afterPath="$PROJECT_DIR$/ppo2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
-    </list>
+    <list default="true" id="4866cdd4-0d01-4e94-a12f-3603bf897c72" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,12 +13,14 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ppo2.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="426">
-              <caret line="309" column="28" lean-forward="true" selection-start-line="309" selection-start-column="28" selection-end-line="309" selection-end-column="28" />
+            <state relative-caret-position="614">
+              <caret line="368" column="57" selection-start-line="368" selection-start-column="57" selection-end-line="368" selection-end-column="57" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
                 <element signature="e#280#4918#0" />
+                <element signature="e#4987#7864#0" />
                 <element signature="e#8276#11554#1" />
+                <element signature="e#14986#15799#0" />
                 <element signature="e#15825#15878#0" />
                 <element signature="e#17083#17125#0" />
               </folding>
@@ -37,7 +32,7 @@
         <entry file="file://$PROJECT_DIR$/expert.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="136">
-              <caret line="8" lean-forward="true" selection-start-line="8" selection-end-line="8" />
+              <caret line="8" selection-start-line="8" selection-end-line="8" />
             </state>
           </provider>
         </entry>
@@ -183,7 +178,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Reinforcement-learning-with-tensorflow/contents/12_Proximal_Policy_Optimization/simply_PPO.py" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../huang_ppo_temp/huang_ppo" />
     <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RunDashboard">
@@ -270,7 +265,7 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.28848115" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.1977574" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -377,7 +372,7 @@
     <entry file="file://$PROJECT_DIR$/expert.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="136">
-          <caret line="8" lean-forward="true" selection-start-line="8" selection-end-line="8" />
+          <caret line="8" selection-start-line="8" selection-end-line="8" />
         </state>
       </provider>
     </entry>
@@ -393,12 +388,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/ppo2.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="426">
-          <caret line="309" column="28" lean-forward="true" selection-start-line="309" selection-start-column="28" selection-end-line="309" selection-end-column="28" />
+        <state relative-caret-position="614">
+          <caret line="368" column="57" selection-start-line="368" selection-start-column="57" selection-end-line="368" selection-end-column="57" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
             <element signature="e#280#4918#0" />
+            <element signature="e#4987#7864#0" />
             <element signature="e#8276#11554#1" />
+            <element signature="e#14986#15799#0" />
             <element signature="e#15825#15878#0" />
             <element signature="e#17083#17125#0" />
           </folding>
