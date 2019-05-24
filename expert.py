@@ -10,7 +10,7 @@ class Sampler():
     def sample(self):
         nbatches = self.obs.shape[0] // self.batch_size
         assert  nbatches > 0, "expert data not enough"
-        start = self.ptr
+        start = self.ptr*self.batch_size
         end = (self.ptr+1)*self.batch_size
         self.ptr = (self.ptr +1) % nbatches
         return self.obs[start:end, :], self.act[start:end, :]
