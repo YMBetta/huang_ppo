@@ -4,13 +4,15 @@ from collections import deque
 import numpy as np
 import tensorflow as tf
 from logger import MyLogger
-from discriminator import Discriminator
+import discriminator
 from expert import Sampler
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.3 
 mylogger = MyLogger("./log")
 Dlam = 0.98
 gail_or_ppo = 'gail'
+# wgan_or_classic = 'wgan'
+wgan_or_classic = 'classic'
 
 class Model(object):
     def __init__(self, *,sess,policy, ob_space, ac_space, nbatch_act, nbatch_train,
@@ -122,9 +124,12 @@ class Runner(object):
         self.obs_space = env.observation_space
         self.model = model
         if gail_or_ppo == 'gail':
-            self.discriminator = Discriminator(env)
+            if wgan_or_classic == 'wgan':
+                self.discriminator = discriminator.WganDiscriminator(env)
+            else:
+                self.discriminator = discriminator.ClassicDiscriminator(env)
 
-        # self.obs = env.obs
+        self.obs = env.obs
         self.gamma = gamma
         self.lam = lam
         self.nsteps = nsteps
@@ -138,9 +143,10 @@ class Runner(object):
         epinfos = []
         mb_states = []
         ep_r = 0
-        self.obs = self.env.reset()
+        # self.obs = self.env.reset()
         # 只能采样一条轨迹, 严格来说
         epi_count = 0
+        last_values = 0.
         while True:
             act, v, self.states, neglogp = self.model.step(self.obs.reshape(-1, self.obs_space.shape[0]), self.states)
             mb_obs.append(self.obs.reshape(self.obs_space.shape[0]))
@@ -157,7 +163,7 @@ class Runner(object):
                 r = self.discriminator.get_rewards(self.sess, self.obs.reshape(1, self.obs_space.shape[0]),
                                                    act.reshape(1, self.action_space.shape[0]))
                 mb_rewards.append(r)
-            if d:
+            if d[0]:
 #                v = self.model.value(obs.reshape(-1, self.obs_space.shape[0]), self.states)
 #                mb_values.append(v)
                 epi_count += 1
@@ -173,11 +179,12 @@ class Runner(object):
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).reshape(self.nsteps)
 
-        # print(mb_obs.shape, mb_rewards.shape, mb_actions.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
+        print(mb_obs.shape, mb_rewards.shape, mb_actions.shape, mb_values.shape, mb_neglogpacs.shape, mb_dones.shape)
         print('epi_count | ', epi_count)
         mb_returns = np.zeros_like(mb_rewards)
         mb_advs = np.zeros_like(mb_rewards)
         lastgaelam = 0.
+
         for t in reversed(range(self.nsteps)):
             if t == self.nsteps-1:
                 nextnonterminal = 1.0
@@ -334,14 +341,15 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
             for _ in range(critic_d):
                 expert_s, expert_a = sampler.sample()
                 gen_s, returns, masks, gen_a, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
+                print(expert_a.shape, expert_s.shape, gen_a.shape, gen_s.shape)
                 runner.discriminator.train(sess, expert_s, expert_a, gen_s, gen_a)
 
                 expert_rewards = runner.discriminator.get_rewards_e(sess, expert_s, expert_a)
                 gen_rewards = runner.discriminator.get_rewards(sess, gen_s, gen_a)
-                wgan_loss = runner.discriminator.get_wgan(sess, expert_s, expert_a, gen_s, gen_a)
+                wgan_loss = runner.discriminator.get_ganLoss(sess, expert_s, expert_a, gen_s, gen_a)
                 mylogger.write_summary_scalar(update, 'expert_reward mean', np.mean(expert_rewards))
                 mylogger.write_summary_scalar(update, 'gen_rewards mean', np.mean(gen_rewards))
-                mylogger.write_summary_scalar(update, 'wgan loss', np.mean(wgan_loss))
+                mylogger.write_summary_scalar(update, 'discrinator loss', np.mean(wgan_loss))
 
 
         if states is None:  # nonrecurrent version
