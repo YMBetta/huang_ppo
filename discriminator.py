@@ -59,8 +59,10 @@ class Discriminator:
 
             optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4)  # is tf.train.RMSPropOptimizer better?
             self.train_op = optimizer.minimize(loss)
-            self.rewards = tf.exp(crit_A)
-            self.rewards_e = tf.exp(crit_e)
+            # self.rewards = tf.exp(crit_A)
+            # self.rewards_e = tf.exp(crit_e)
+            self.rewards = crit_A
+            self.rewards_e = crit_e
             self.WGAN = loss
 
             # self.rewards = tf.log(tf.clip_by_value(prob_2, 1e-10, 1))  # log(P(expert|s,a)) larger is better for agent here the reward is minus
@@ -94,3 +96,82 @@ class Discriminator:
 
     def get_trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+
+
+class ClassicDiscriminator:
+    def __init__(self, env):
+        """
+        :param env:
+        Output of this Discriminator is reward for learning agent. Not the cost.
+        Because discriminator predicts  P(expert|s,a) = 1 - P(agent|s,a).
+        """
+
+        with tf.variable_scope('discriminator'):
+            self.scope = tf.get_variable_scope().name
+            self.expert_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
+            # add noise for stabilise training
+            # self.expert_s += tf.random_normal(dtype=tf.float32, shape=self.expert_s.shape)
+            self.expert_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
+
+            expert_s_a = tf.concat([self.expert_s, self.expert_a], axis=1)
+
+            self.agent_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
+            # add noise for stabilise training
+            # self.agent_s += tf.random_normal(dtype=tf.float32, shape=self.agent_s.shape)
+            self.agent_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
+            agent_s_a = tf.concat([self.agent_s, self.agent_a], axis=1)
+
+            with tf.variable_scope('network') as network_scope:
+                crit_e = self.construct_network(input=expert_s_a)
+                network_scope.reuse_variables()  # share parameter
+                crit_A = self.construct_network(input=agent_s_a)
+
+            with tf.variable_scope('loss'):
+                logits = tf.concat([crit_A, crit_e], axis=0)
+                ent = tf.reduce_mean(self.bernouli_entropy(logits))
+                ent_loss = -1e-3*ent
+                loss = -tf.log(tf.nn.sigmoid(crit_e)+1e-8) - tf.log(1-tf.nn.sigmoid(crit_A)+1e-8)
+                loss = tf.reduce_mean(loss) + ent_loss
+                tf.summary.scalar('discriminator', loss)
+
+            optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)  # is tf.train.RMSPropOptimizer better?
+            self.train_op = optimizer.minimize(loss)
+            self.rewards = -tf.log(1-tf.nn.sigmoid(crit_A)+1e-8)
+            self.rewards_e = tf.log(tf.nn.sigmoid(crit_e)+1e-8)
+            self.WGAN = loss
+
+    def construct_network(self, input):
+        layer_1 = tf.layers.dense(inputs=input, units=100, activation=tf.nn.leaky_relu, name='layer1')
+        layer_2 = tf.layers.dense(inputs=layer_1, units=100, activation=tf.nn.leaky_relu, name='layer2')
+        layer_3 = tf.layers.dense(inputs=layer_2, units=100, activation=tf.nn.leaky_relu, name='layer3')
+        prob = tf.layers.dense(inputs=layer_3, units=1, activation=None, name='prob')
+        return prob
+
+    def train(self, sess, expert_s, expert_a, agent_s, agent_a):
+        return sess.run(self.train_op, feed_dict={self.expert_s: expert_s,
+                                                                      self.expert_a: expert_a,
+                                                                      self.agent_s: agent_s,
+                                                                      self.agent_a: agent_a})
+
+    def get_rewards(self, sess, agent_s, agent_a):
+        return sess.run(self.rewards, feed_dict={self.agent_s: agent_s,
+                                                                     self.agent_a: agent_a})
+
+    def get_rewards_e(self, sess, expert_s, expert_a):
+        return sess.run(self.rewards_e, feed_dict={self.expert_s: expert_s,
+                                                                       self.expert_a: expert_a})
+
+    def get_wgan(self, sess, expert_s, expert_a, agent_s, agent_a):
+        return sess.run(self.WGAN, feed_dict={self.expert_s: expert_s,
+                                                                  self.expert_a: expert_a,
+                                                                  self.agent_s: agent_s,
+                                                                  self.agent_a: agent_a})
+
+    def get_trainable_variables(self):
+        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+
+    def logsigmoid(self, a):
+        return -tf.nn.softplus(-a)
+
+    def bernouli_entropy(self, logits):
+        return (1.-tf.nn.sigmoid(logits))*logits - self.logsigmoid(logits)

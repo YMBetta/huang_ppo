@@ -4,7 +4,7 @@ from collections import deque
 import numpy as np
 import tensorflow as tf
 from logger import MyLogger
-from discriminator import Discriminator
+from discriminator import ClassicDiscriminator as Discriminator
 from expert import Sampler
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.3 
@@ -168,6 +168,7 @@ class Runner(object):
 
         mb_obs = np.asarray(mb_obs, dtype=np.float32).reshape(self.nsteps, self.obs_space.shape[0])
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).reshape(self.nsteps)
+        mb_rewards /= np.max(np.abs(mb_rewards))  # rewards scale
         mb_actions = np.asarray(mb_actions, np.float32).reshape(self.nsteps, self.action_space.shape[0])
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
@@ -323,7 +324,7 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         mblossvals = []
 
         if update < 10 or update%50 == 0:
-            critic_d = 5
+            critic_d = 1
         else:
             critic_d = 1
 
@@ -343,9 +344,8 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
                 mylogger.write_summary_scalar(update, 'gen_rewards mean', np.mean(gen_rewards))
                 mylogger.write_summary_scalar(update, 'wgan loss', np.mean(wgan_loss))
 
-
         if states is None:  # nonrecurrent version
-            for i in range(2):  # critic part of policy is 2
+            for i in range(3):  # critic part of policy is 2
                 inds = np.arange(nbatch)
                 obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
                 if update > nupdates - 2:
@@ -391,7 +391,6 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         fps = int(nbatch / (tnow - tstart))
 
         policy_step = sess.run(model.global_step_policy)
-      
         '''pg_loss, vf_loss, entropy'''
         mylogger.write_summary_scalar(update, "pg_loss", lossvals[0])
         mylogger.write_summary_scalar(update, "vf_loss", lossvals[1])
