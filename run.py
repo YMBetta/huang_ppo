@@ -10,7 +10,7 @@ class UnityEnv():
     def __init__(self,episode_len=1000000):
 
         # work_id 即端口
-        self.env = UnityEnvironment(file_name='/home/amax/AutoDrive/school_road/school_road.x86_64', worker_id=9000, seed=1)
+        self.env = UnityEnvironment(file_name='/home/amax/AutoDrive/school_road/school_road.x86_64', worker_id=13000, seed=1)
         # self.env = UnityEnvironment(file_name=None, worker_id=0, seed=1)
         '''获取信息'''
         self.brain_name = self.env.brain_names[0]
@@ -18,13 +18,6 @@ class UnityEnv():
         self.env.reset()
         info = self.env.step()
         brainInfo = info[self.brain_name]
-
-        '''设置动作、观测空间'''
-        #self.action_space = spaces.Discrete(1)
-        #self.action_space = spaces.Tuple([spaces.Discrete(2),spaces.Discrete(2)])
-        #self.action_space  = spaces.MultiDiscrete([2,2])
-        # self.action_space      = spaces.Box(low=np.array([-2, -2]),    high=np.array([+1,+1]),  dtype=int)
-        # self.observation_space = spaces.Box(low=np.array([-1,-1,-1,-1,-1,-1,-1,-1]), high=np.array([1,1,1,1,1,1,1,1]),dtype=np.float32)
 
         self.action_space = spaces.Box(low=np.zeros(2)-10., high=np.zeros(2)+10., dtype=np.float32)
         self.observation_space = spaces.Box(low=np.zeros(95) - 10, high=np.zeros(95) + 10, dtype=np.float32)
@@ -80,7 +73,7 @@ def main():
     env = UnityEnv()
     ppo2.learn(policy=policies.MlpPolicy,
                env=env,
-               nsteps=int(100),
+               nsteps=int(2000),
                total_timesteps=num_timesteps,
                ent_coef=0.,
                lr=1e-4,
@@ -89,8 +82,8 @@ def main():
                gamma=0.99,
                lam=0.95,
                log_interval=10,
-               nminibatches=10,
-               noptepochs=10,
+               nminibatches=5,
+               noptepochs=5,
                cliprange=0.2,
                save_interval=50)
 

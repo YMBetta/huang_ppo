@@ -18,7 +18,7 @@ class Sampler():
     def random_sample(self):
         nbatches = self.obs.shape[0] // self.batch_size
         assert nbatches > 0, "expert data not enough"
-        ptr = np.asarray(np.random.randint(0, nbatches, 1))
+        ptr = np.asscalar(np.random.randint(0, nbatches, 1))
         start = ptr * self.batch_size
         end = (ptr + 1) * self.batch_size
         return self.obs[start:end, :], self.act[start:end, :]
