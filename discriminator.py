@@ -11,26 +11,26 @@ class WganDiscriminator:
         """
 
         with tf.variable_scope('discriminator'):
+            batch_size = 2000
             self.scope = tf.get_variable_scope().name
-            self.expert_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
-            # add noise for stabilise training
-            # self.expert_s += tf.random_normal(dtype=tf.float32, shape=self.expert_s.shape)
-            self.expert_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
 
+
+            self.expert_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
+            self.expert_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
+            # add noise for stabilise training
+            self.expert_a += tf.random_normal(tf.shape(self.expert_a), mean=0.2, stddev=0.1, dtype=tf.float32)
             expert_s_a = tf.concat([self.expert_s, self.expert_a], axis=1)
 
             self.agent_s = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.observation_space.shape))
-            # add noise for stabilise training
-            # self.agent_s += tf.random_normal(dtype=tf.float32, shape=self.agent_s.shape)
             self.agent_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
+            # add noise for stabilise training
+            self.agent_a += tf.random_normal(tf.shape(self.agent_a), mean=0.2, stddev=0.1, dtype=tf.float32)
             agent_s_a = tf.concat([self.agent_s, self.agent_a], axis=1)
 
             # batch_size = self.expert_s.shape[0]
-            batch_size = 2000
 
             epsilon = tf.random_uniform(shape=[batch_size, 1], minval=0., maxval=1.)
             X_hat_State = self.expert_s + epsilon * (self.agent_s - self.expert_s)
-
             X_hat_Action = self.expert_a+ epsilon * (self.agent_a - self.expert_a)
             X_hat_s_a = tf.concat([X_hat_State, X_hat_Action], axis=1)
 
@@ -57,10 +57,12 @@ class WganDiscriminator:
                 # loss = -loss
                 tf.summary.scalar('discriminator', loss)
 
-            optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4)  # is tf.train.RMSPropOptimizer better?
+            optimizer = tf.train.RMSPropOptimizer(learning_rate=1e-4, epsilon=1e-5)  # is tf.train.RMSPropOptimizer better?
             self.train_op = optimizer.minimize(loss)
-            self.rewards = tf.exp(crit_A)
-            self.rewards_e = tf.exp(crit_e)
+            # self.rewards = tf.exp(crit_A)
+            # self.rewards_e = tf.exp(crit_e)
+            self.rewards = crit_A
+            self.rewards_e = crit_e
             self.WGAN = loss
 
             # self.rewards = tf.log(tf.clip_by_value(prob_2, 1e-10, 1))  # log(P(expert|s,a)) larger is better for agent here the reward is minus
@@ -119,33 +121,32 @@ class ClassicDiscriminator():
             self.agent_a = tf.placeholder(dtype=tf.float32, shape=[None] + list(env.action_space.shape))
             agent_s_a = tf.concat([self.agent_s, self.agent_a], axis=1)
 
-        with tf.variable_scope('network') as network_scope:
-            crit_e = self.construct_network(input=expert_s_a)
-            network_scope.reuse_variables()  # share parameter
-            crit_A = self.construct_network(input=agent_s_a)
+            with tf.variable_scope('network') as network_scope:
+                crit_e = self.construct_network(input=expert_s_a)
+                network_scope.reuse_variables()  # share parameter
+                crit_A = self.construct_network(input=agent_s_a)
 
-        LAMBDA = 10
 
-        with tf.variable_scope('loss'):
-            gan_loss = -tf.log(crit_e-1e-10) - tf.log(1-crit_A+1e-10)
+            with tf.variable_scope('loss'):
+                logits = tf.concat([crit_e, crit_A], axis=0)
+                ent = tf.reduce_mean(self.bernouli_entropy(logits))
+                ent_loss = -0.001*ent
+                gan_loss = -tf.log(tf.nn.sigmoid(crit_e)+1e-8) - tf.log(1-tf.nn.sigmoid(crit_A)+1e-8)
+                gan_loss = tf.reduce_mean(gan_loss) + ent_loss
+                tf.summary.scalar('discriminator', gan_loss)
 
-            # loss_expert = tf.reduce_mean(tf.log(tf.clip_by_value(prob_1, 0.01, 1)))
-            # loss_agent = tf.reduce_mean(tf.log(tf.clip_by_value(1 - prob_2, 0.01, 1)))
-            # loss = loss_expert + loss_agent
-            # loss = -loss
-            tf.summary.scalar('discriminator', gan_loss)
+            optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)  # is tf.train.RMSPropOptimizer better?
+            self.train_op = optimizer.minimize(gan_loss)
+            self.rewards_e = -tf.log(1 - tf.nn.sigmoid(crit_e) + 1e-8)
+            self.rewards = -tf.log(1 - tf.nn.sigmoid(crit_A)+1e-8)
+            self.loss = gan_loss
 
-        optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)  # is tf.train.RMSPropOptimizer better?
-        self.train_op = optimizer.minimize(gan_loss)
-        self.rewards_e = -tf.log(1 - crit_e + 1e-10)
-        self.rewards = -tf.log(1-crit_A+1e-10)
-        self.loss = gan_loss
-
-    def construct_network(self, input):
+    def construct_network(self, input, istraining=True):
         layer_1 = tf.layers.dense(inputs=input, units=100, activation=tf.nn.leaky_relu, name='layer1')
-        layer_2 = tf.layers.dense(inputs=layer_1, units=100, activation=tf.nn.leaky_relu, name='layer2')
-        layer_3 = tf.layers.dense(inputs=layer_2, units=100, activation=tf.nn.leaky_relu, name='layer3')
-        prob = tf.layers.dense(inputs=layer_3, units=1, activation=tf.nn.sigmoid, name='prob')
+        layer_1_d = tf.layers.dropout(inputs=layer_1, rate=0.7, training=istraining)
+        layer_2 = tf.layers.dense(inputs=layer_1_d, units=100, activation=tf.nn.leaky_relu, name='layer2')
+        layer_2_d = tf.layers.dropout(inputs=layer_2, rate=0.7, training=istraining)
+        prob = tf.layers.dense(inputs=layer_2_d, units=1, activation=None, name='prob')
         return prob
 
     def train(self, sess, expert_s, expert_a, agent_s, agent_a):
@@ -170,3 +171,9 @@ class ClassicDiscriminator():
 
     def get_trainable_variables(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.scope)
+
+    def logsigmoid(self, a):
+        return -tf.nn.softplus(-a)
+
+    def bernouli_entropy(self, logits):
+        return (1.-tf.nn.sigmoid(logits))*logits - self.logsigmoid(logits)

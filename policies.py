@@ -176,7 +176,9 @@ class MlpPolicy(object):
             # h3 = activ(bn(fc(h2, 'pi_fc3', nh=256, init_scale=np.sqrt(2)), training=training))
             h1 = activ(fc(X, 'pi_fc1', nh=100, init_scale=np.sqrt(2)))
             h2 = activ(fc(h1, 'pi_fc2', nh=100, init_scale=np.sqrt(2)))
-            pi = 2*tf.nn.tanh(fc(h2, 'pi', actdim, init_scale=0.01))
+            pi0 = tf.nn.tanh(fc(h2, 'pi0', 1, init_scale=0.01))
+            pi1 = tf.nn.sigmoid(fc(h2, 'pi1', 1, init_scale=0.01))
+            pi = tf.concat([pi0, pi1], axis=1)
 
             # h1 = activ(bn(fc(X, 'vf_fc1', nh=512, init_scale=np.sqrt(2)), training=training))
             # h2 = activ(bn(fc(h1, 'vf_fc2', nh=512, init_scale=np.sqrt(2)), training=training))
@@ -195,7 +197,9 @@ class MlpPolicy(object):
         a0 = self.pd.sample()
         action = tf.identity(a0, name='action')  # use this tensor as action when inference
         # if I need action clipping?
-        a0 = tf.clip_by_value(a0, -2, 2)
+        a1 = tf.clip_by_value(a0[:, 0:1], -1, 1)
+        a2 = tf.clip_by_value(a0[:, 1:2], 0, 1)
+        a0 = tf.concat([a1, a2], axis=1)
         neglogp0 = self.pd.neglogp(a0)
 
         self.initial_state = None

@@ -9,7 +9,6 @@ from expert import Sampler
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.3 
 mylogger = MyLogger("./log")
-Dlam = 0.98
 gail_or_ppo = 'gail'
 # wgan_or_classic = 'wgan'
 wgan_or_classic = 'classic'
@@ -174,6 +173,9 @@ class Runner(object):
 
         mb_obs = np.asarray(mb_obs, dtype=np.float32).reshape(self.nsteps, self.obs_space.shape[0])
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).reshape(self.nsteps)
+        #  reward change a lot, need reward normalize
+        mb_rewards -= np.mean(mb_rewards)
+        mb_rewards /= np.max(np.abs(mb_rewards))
         mb_actions = np.asarray(mb_actions, np.float32).reshape(self.nsteps, self.action_space.shape[0])
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
@@ -330,30 +332,32 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         mblossvals = []
 
         if update < 10 or update%50 == 0:
-            critic_d = 5
+            critic_d = 1
         else:
             critic_d = 1
+        if update > 300:
+            critic_d = 0  # 不更新D ， G 的表现会差
 
         if gail_or_ppo == 'ppo':
             pass
         else:
             # 这里需要做训练比例的调整
             for _ in range(critic_d):
-                expert_s, expert_a = sampler.sample()
+                expert_s, expert_a = sampler.random_sample()
                 gen_s, returns, masks, gen_a, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
                 print(expert_a.shape, expert_s.shape, gen_a.shape, gen_s.shape)
                 runner.discriminator.train(sess, expert_s, expert_a, gen_s, gen_a)
 
                 expert_rewards = runner.discriminator.get_rewards_e(sess, expert_s, expert_a)
                 gen_rewards = runner.discriminator.get_rewards(sess, gen_s, gen_a)
-                wgan_loss = runner.discriminator.get_ganLoss(sess, expert_s, expert_a, gen_s, gen_a)
+                gan_loss = runner.discriminator.get_ganLoss(sess, expert_s, expert_a, gen_s, gen_a)
                 mylogger.write_summary_scalar(update, 'expert_reward mean', np.mean(expert_rewards))
                 mylogger.write_summary_scalar(update, 'gen_rewards mean', np.mean(gen_rewards))
-                mylogger.write_summary_scalar(update, 'discrinator loss', np.mean(wgan_loss))
+                mylogger.write_summary_scalar(update, 'discrinator loss', np.mean(gan_loss))
 
 
         if states is None:  # nonrecurrent version
-            for i in range(2):  # critic part of policy is 2
+            for i in range(4):  # critic part of policy is 2
                 inds = np.arange(nbatch)
                 obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
                 if update > nupdates - 2:
@@ -374,7 +378,7 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
                         mblossvals.append(model.train(lrnow, cliprangenow, *slices))  # lr, cliprange, obs, returns, masks, actions, values, neglogpacs, states
 
         else:  # recurrent version
-            for i in range(2):  # critic part of policy if 2
+            for i in range(3):  # critic part of policy if 2
                 obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
                 # obs = obs + (np.random.normal(0, 0.2, 16000 * 291) * (np.exp(-policy_step / 100))).reshape(obs.shape)
                 # print('states.shape', states.shape)
