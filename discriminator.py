@@ -132,7 +132,8 @@ class ClassicDiscriminator():
                 ent = tf.reduce_mean(self.bernouli_entropy(logits))
                 ent_loss = -0.001*ent
                 gan_loss = -tf.log(tf.nn.sigmoid(crit_e)+1e-8) - tf.log(1-tf.nn.sigmoid(crit_A)+1e-8)
-                gan_loss = tf.reduce_mean(gan_loss) + ent_loss
+                # gan_loss = tf.reduce_mean(gan_loss) + ent_loss
+                gan_loss = tf.reduce_mean(gan_loss)
                 tf.summary.scalar('discriminator', gan_loss)
 
             optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)  # is tf.train.RMSPropOptimizer better?
@@ -143,10 +144,10 @@ class ClassicDiscriminator():
 
     def construct_network(self, input, istraining=True):
         layer_1 = tf.layers.dense(inputs=input, units=100, activation=tf.nn.leaky_relu, name='layer1')
-        layer_1_d = tf.layers.dropout(inputs=layer_1, rate=0.7, training=istraining)
-        layer_2 = tf.layers.dense(inputs=layer_1_d, units=100, activation=tf.nn.leaky_relu, name='layer2')
-        layer_2_d = tf.layers.dropout(inputs=layer_2, rate=0.7, training=istraining)
-        prob = tf.layers.dense(inputs=layer_2_d, units=1, activation=None, name='prob')
+        # layer_1_d = tf.layers.dropout(inputs=layer_1, rate=0.7, training=istraining)
+        layer_2 = tf.layers.dense(inputs=layer_1, units=100, activation=tf.nn.tanh, name='layer2')
+        # layer_2_d = tf.layers.dropout(inputs=layer_2, rate=0.7, training=istraining)
+        prob = tf.layers.dense(inputs=layer_2, units=1, activation=None, name='prob')
         return prob
 
     def train(self, sess, expert_s, expert_a, agent_s, agent_a):

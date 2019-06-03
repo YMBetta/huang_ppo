@@ -336,7 +336,7 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         else:
             critic_d = 1
         if update > 300:
-            critic_d = 0  # 不更新D ， G 的表现会差
+            critic_d = 1  # 不更新D ， G 的表现会差
 
         if gail_or_ppo == 'ppo':
             pass

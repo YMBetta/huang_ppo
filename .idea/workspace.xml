@@ -2,12 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4866cdd4-0d01-4e94-a12f-3603bf897c72" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/discriminator.py" beforeDir="false" afterPath="$PROJECT_DIR$/discriminator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/expert.py" beforeDir="false" afterPath="$PROJECT_DIR$/expert.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/policies.py" beforeDir="false" afterPath="$PROJECT_DIR$/policies.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/events.out.tfevents.1559111119.amax-desktop" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/log.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/checkpoint" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-300.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-300.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-300.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-350.data-00000-of-00001" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-350.index" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/model/model-350.meta" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/ppo2.py" beforeDir="false" afterPath="$PROJECT_DIR$/ppo2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/run.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sample_tras.py" beforeDir="false" afterPath="$PROJECT_DIR$/sample_tras.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,33 +24,33 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/ppo2.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-121">
-              <caret line="346" column="38" lean-forward="true" selection-start-line="346" selection-start-column="38" selection-end-line="346" selection-end-column="38" />
+            <state relative-caret-position="286">
+              <caret line="379" column="13" selection-start-line="379" selection-start-column="13" selection-end-line="379" selection-end-column="13" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
-                <element signature="e#367#5284#0" />
-                <element signature="e#5422#5907#0" />
-                <element signature="e#6289#7535#0" />
-                <element signature="e#9072#9199#0" />
-                <element signature="e#9510#12788#1" />
-                <element signature="e#16237#16290#0" />
-                <element signature="e#17402#18640#0" />
+                <element signature="e#391#5308#0" />
+                <element signature="e#5377#9398#0" />
+                <element signature="e#9427#9554#0" />
+                <element signature="e#9579#9621#0" />
+                <element signature="e#9865#13143#1" />
+                <element signature="e#17920#19158#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/discriminator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="147" column="34" lean-forward="true" selection-start-line="147" selection-start-column="34" selection-end-line="147" selection-end-column="34" />
+            <state relative-caret-position="219">
+              <caret line="127" selection-start-line="127" selection-end-line="127" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
-                <element signature="e#66#5265#0" />
+                <element signature="e#66#5281#0" />
+                <element signature="e#5351#5541#1" />
               </folding>
             </state>
           </provider>
@@ -52,11 +59,11 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/run.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="238">
-              <caret line="73" column="41" selection-start-line="73" selection-start-column="41" selection-end-line="73" selection-end-column="41" />
+            <state relative-caret-position="133">
+              <caret line="67" column="24" selection-start-line="67" selection-start-column="24" selection-end-line="67" selection-end-column="24" />
               <folding>
                 <element signature="e#1#11#0" expanded="true" />
-                <element signature="e#148#2879#0" />
+                <element signature="e#148#2418#0" />
               </folding>
             </state>
           </provider>
@@ -65,7 +72,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/policies.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="323">
+            <state relative-caret-position="765">
               <caret line="179" column="40" selection-start-line="179" selection-start-column="40" selection-end-line="179" selection-end-column="40" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
@@ -108,6 +115,7 @@
       <find>sample</find>
       <find>sum</find>
       <find>classic</find>
+      <find>np.save</find>
     </findStrings>
     <replaceStrings>
       <replace>update</replace>
@@ -125,10 +133,11 @@
         <option value="$PROJECT_DIR$/test.py" />
         <option value="$PROJECT_DIR$/running_mean_std.py" />
         <option value="$PROJECT_DIR$/sample_tras.py" />
+        <option value="$PROJECT_DIR$/policies.py" />
+        <option value="$PROJECT_DIR$/ppo2.py" />
+        <option value="$PROJECT_DIR$/model/checkpoint" />
         <option value="$PROJECT_DIR$/run.py" />
         <option value="$PROJECT_DIR$/discriminator.py" />
-        <option value="$PROJECT_DIR$/ppo2.py" />
-        <option value="$PROJECT_DIR$/policies.py" />
       </list>
     </option>
   </component>
@@ -143,6 +152,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -154,7 +164,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -290,7 +299,7 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.32517838" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32517838" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -406,9 +415,16 @@
         </state>
       </provider>
     </entry>
+    <entry file="file:///usr/local/python3.6/lib/python3.6/site-packages/tensorflow/python/layers/core.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-435">
+          <caret line="241" column="50" lean-forward="true" selection-start-line="241" selection-start-column="50" selection-end-line="241" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/policies.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
+        <state relative-caret-position="765">
           <caret line="179" column="40" selection-start-line="179" selection-start-column="40" selection-end-line="179" selection-end-column="40" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
@@ -421,48 +437,48 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/model/checkpoint">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="136">
+          <caret line="8" selection-start-line="8" selection-end-line="8" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/run.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="238">
-          <caret line="73" column="41" selection-start-line="73" selection-start-column="41" selection-end-line="73" selection-end-column="41" />
+        <state relative-caret-position="133">
+          <caret line="67" column="24" selection-start-line="67" selection-start-column="24" selection-end-line="67" selection-end-column="24" />
           <folding>
             <element signature="e#1#11#0" expanded="true" />
-            <element signature="e#148#2879#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/python3.6/lib/python3.6/site-packages/tensorflow/python/layers/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-435">
-          <caret line="241" column="50" lean-forward="true" selection-start-line="241" selection-start-column="50" selection-end-line="241" selection-end-column="50" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/discriminator.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="147" column="34" lean-forward="true" selection-start-line="147" selection-start-column="34" selection-end-line="147" selection-end-column="34" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-            <element signature="e#66#5265#0" />
+            <element signature="e#148#2418#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/ppo2.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-121">
-          <caret line="346" column="38" lean-forward="true" selection-start-line="346" selection-start-column="38" selection-end-line="346" selection-end-column="38" />
+        <state relative-caret-position="286">
+          <caret line="379" column="13" selection-start-line="379" selection-start-column="13" selection-end-line="379" selection-end-column="13" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
-            <element signature="e#367#5284#0" />
-            <element signature="e#5422#5907#0" />
-            <element signature="e#6289#7535#0" />
-            <element signature="e#9072#9199#0" />
-            <element signature="e#9510#12788#1" />
-            <element signature="e#16237#16290#0" />
-            <element signature="e#17402#18640#0" />
+            <element signature="e#391#5308#0" />
+            <element signature="e#5377#9398#0" />
+            <element signature="e#9427#9554#0" />
+            <element signature="e#9579#9621#0" />
+            <element signature="e#9865#13143#1" />
+            <element signature="e#17920#19158#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/discriminator.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="219">
+          <caret line="127" selection-start-line="127" selection-end-line="127" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#66#5281#0" />
+            <element signature="e#5351#5541#1" />
           </folding>
         </state>
       </provider>

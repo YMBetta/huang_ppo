@@ -79,7 +79,7 @@ def main():
                lr=1e-4,
                vf_coef=0.1,
                max_grad_norm=20,
-               gamma=0.99,
+               gamma=0.997,
                lam=0.95,
                log_interval=10,
                nminibatches=5,
