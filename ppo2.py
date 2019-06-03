@@ -10,8 +10,8 @@ gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.3 
 mylogger = MyLogger("./log")
 gail_or_ppo = 'gail'
-# wgan_or_classic = 'wgan'
-wgan_or_classic = 'classic'
+wgan_or_classic = 'wgan'
+# wgan_or_classic = 'classic'
 
 class Model(object):
     def __init__(self, *,sess,policy, ob_space, ac_space, nbatch_act, nbatch_train,
@@ -176,6 +176,7 @@ class Runner(object):
         #  reward change a lot, need reward normalize
         mb_rewards -= np.mean(mb_rewards)
         mb_rewards /= np.max(np.abs(mb_rewards))
+
         mb_actions = np.asarray(mb_actions, np.float32).reshape(self.nsteps, self.action_space.shape[0])
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
@@ -360,11 +361,11 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
             for i in range(4):  # critic part of policy is 2
                 inds = np.arange(nbatch)
                 obs, returns, masks, actions, values, neglogpacs, states, epinfos, ep_r, ep_count = runner.run()
-                if update > nupdates - 2:
+                if update % 80 == 0:
                     pass
-                    # np.savetxt('trajectory/obs.txt', obs, fmt='%10.6f')
-                    # np.savetxt('trajectory/act.txt', actions, fmt='%10.6f')
-                    # np.savetxt('trajectory/epr.txt', np.asarray([ep_r]))
+                    np.savetxt('trajectory/gen_obs.txt', obs, fmt='%10.6f')
+                    np.savetxt('trajectory/gen_act.txt', actions, fmt='%10.6f')
+                    np.savetxt('trajectory/gen_epr.txt', np.asarray([ep_r]), fmt='%d')
                 mylogger.write_summary_scalar(update, 'epr_sum', ep_r)
                 mylogger.write_summary_scalar(update, 'nums of episodes', ep_count)
                 epinfobuf.extend(epinfos)
@@ -414,8 +415,8 @@ def learn(*, policy, env, nsteps=200, total_timesteps=1e5, ent_coef, lr,
         if save_interval and (update % save_interval == 0 or update == 1):
             mylogger.add_info_txt("saved ckpt model!")
             model.save(sess=sess, save_path=model.save_path, global_step=update)
-    # np.savetxt('obs.txt', obs, fmt='%10.6f')
-    # np.savetxt('action.txt', actions, fmt='%10.6f')
+        # np.savetxt('obs.txt', obs, fmt='%10.6f')
+        # np.savetxt('action.txt', actions, fmt='%10.6f')
     env.close()
 
 

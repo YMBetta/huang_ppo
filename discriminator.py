@@ -67,11 +67,12 @@ class WganDiscriminator:
 
             # self.rewards = tf.log(tf.clip_by_value(prob_2, 1e-10, 1))  # log(P(expert|s,a)) larger is better for agent here the reward is minus
 
-    def construct_network(self, input):
+    def construct_network(self, input, istraining=True):
         layer_1 = tf.layers.dense(inputs=input, units=100, activation=tf.nn.leaky_relu, name='layer1')
-        layer_2 = tf.layers.dense(inputs=layer_1, units=100, activation=tf.nn.leaky_relu, name='layer2')
-        layer_3 = tf.layers.dense(inputs=layer_2, units=100, activation=tf.nn.leaky_relu, name='layer3')
-        prob = tf.layers.dense(inputs=layer_3, units=1, activation=None, name='prob')
+        layer_1_d = tf.layers.dropout(inputs=layer_1, rate=0.7, training=istraining)
+        layer_2 = tf.layers.dense(inputs=layer_1_d, units=100, activation=tf.nn.leaky_relu, name='layer2')
+        layer_2_d = tf.layers.dropout(inputs=layer_2, rate=0.7, training=istraining)
+        prob = tf.layers.dense(inputs=layer_2_d, units=1, activation=None, name='prob')
         return prob
 
     def train(self, sess, expert_s, expert_a, agent_s, agent_a):
@@ -125,7 +126,6 @@ class ClassicDiscriminator():
                 crit_e = self.construct_network(input=expert_s_a)
                 network_scope.reuse_variables()  # share parameter
                 crit_A = self.construct_network(input=agent_s_a)
-
 
             with tf.variable_scope('loss'):
                 logits = tf.concat([crit_e, crit_A], axis=0)

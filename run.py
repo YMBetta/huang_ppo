@@ -10,7 +10,7 @@ class UnityEnv():
     def __init__(self,episode_len=1000000):
 
         # work_id 即端口
-        self.env = UnityEnvironment(file_name='/home/amax/AutoDrive/school_road/school_road.x86_64', worker_id=9000, seed=1)
+        self.env = UnityEnvironment(file_name='/home/amax/AutoDrive/school_road/school_road.x86_64', worker_id=13000, seed=1)
         # self.env = UnityEnvironment(file_name=None, worker_id=0, seed=1)
         '''获取信息'''
         self.brain_name = self.env.brain_names[0]

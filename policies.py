@@ -197,6 +197,10 @@ class MlpPolicy(object):
         a0 = self.pd.sample()
         action = tf.identity(a0, name='action')  # use this tensor as action when inference
         # if I need action clipping?
+<<<<<<< HEAD
+=======
+        # a0 = tf.clip_by_value(a0, -2, 2)
+>>>>>>> ca6639fda5209fb5334d2013352575820f5dee29
         a1 = tf.clip_by_value(a0[:, 0:1], -1, 1)
         a2 = tf.clip_by_value(a0[:, 1:2], 0, 1)
         a0 = tf.concat([a1, a2], axis=1)
