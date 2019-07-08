@@ -1,4 +1,4 @@
-# Generatative adversarial imitation learning
+# Generative adversarial imitation learning
 # Prerequisites
 Intall openAI baselines
 https://github.com/openai/baselines
