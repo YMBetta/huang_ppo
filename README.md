@@ -1,9 +1,9 @@
 # Generatative adversarial imitation learning
 # Prerequisites
-openAI baselines
+Intall openAI baselines
 https://github.com/openai/baselines
 
-openAI gym
+Install openAI gym
 https://github.com/openai/gym
 
 # Project struct
