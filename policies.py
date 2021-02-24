@@ -186,7 +186,9 @@ class MlpPolicy(object):
             vf = fc(h2, 'vf', 1)[:, 0]
             logstd = tf.get_variable(name="logstd", shape=[1, actdim],
                                      initializer=tf.zeros_initializer())
-        pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)
+            # logstd = tf.layers.dense(inputs=h2, activation=None, units=actdim, name='logstd')
+
+        pdparam = tf.concat([pi, pi * 0.0 + logstd], axis=1)  # pi * 0.0 + logstd的作用是使得qi有相同的形状
         self.pdtype = make_pdtype(ac_space)  # Probability distribution function  pd
         '''返回DiagGaussianPd的类'''
         self.pd = self.pdtype.pdfromflat(pdparam)
